@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/alecthomas/chroma v0.8.2
+	github.com/blevesearch/bleve/v2 v2.1.0
 	github.com/disintegration/imaging v1.6.2
 	github.com/gabriel-vasile/mimetype v1.2.0
 	github.com/kyokomi/emoji/v2 v2.2.8
@@ -27,3 +28,5 @@ require (
 	maunium.net/go/mauview v0.1.2
 	maunium.net/go/tcell v0.2.0
 )
+
+replace maunium.net/go/gomuks => ./
