@@ -32,6 +32,7 @@ import (
 	"reflect"
 	"runtime"
 	dbg "runtime/debug"
+	"strings"
 	"time"
 
 	"maunium.net/go/mautrix"
@@ -126,7 +127,7 @@ func (c *Container) InitClient() error {
 	}
 
 	if c.history == nil {
-		c.history, err = NewHistoryManager(c.config.HistoryPath)
+		c.history, err = NewHistoryManager(c.config.HistoryPath, c.config.IndexPath)
 		if err != nil {
 			return fmt.Errorf("failed to initialize history: %w", err)
 		}
@@ -153,12 +154,22 @@ func (c *Container) Initialized() bool {
 }
 
 func (c *Container) PasswordLogin(user, password string) error {
+	identifier := mautrix.UserIdentifier{
+		Type: mautrix.IdentifierTypeUser,
+		User: user,
+	}
+
+	// If username is an email address, the identifier is third-party?
+	if strings.Contains(user, "@") {
+		identifier = mautrix.UserIdentifier{
+			Type:    mautrix.IdentifierTypeThirdParty,
+			Address: user,
+			Medium:  "email",
+		}
+	}
 	resp, err := c.client.Login(&mautrix.ReqLogin{
-		Type: "m.login.password",
-		Identifier: mautrix.UserIdentifier{
-			Type: "m.id.user",
-			User: user,
-		},
+		Type:                     "m.login.password",
+		Identifier:               identifier,
 		Password:                 password,
 		InitialDeviceDisplayName: "gomuks",
 
@@ -1138,6 +1149,10 @@ func (c *Container) GetHistory(room *rooms.Room, limit int, dbPointer uint64) ([
 		return nil, dbPointer, err
 	}
 	return events, dbPointer, nil
+}
+
+func (c *Container) SearchHistory(room *rooms.Room, terms string) ([]*muksevt.Event, error) {
+	return c.history.Search(room, terms)
 }
 
 func (c *Container) GetEvent(room *rooms.Room, eventID id.EventID) (*muksevt.Event, error) {

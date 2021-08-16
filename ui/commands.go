@@ -775,3 +775,19 @@ func cmdToggle(cmd *Command) {
 func cmdLogout(cmd *Command) {
 	cmd.Matrix.Logout()
 }
+
+func cmdSearch(cmd *Command) {
+	if len(cmd.Args) == 0 {
+		cmd.Reply("Usage: /search <search terms>")
+	}
+	terms := strings.Join(cmd.Args, " ")
+	evts, err := cmd.Matrix.SearchHistory(cmd.Room.Room, terms)
+	if err != nil {
+		cmd.Reply("Failed to search '%s': %v", terms, err)
+		return
+	}
+	for _, e := range evts {
+		cmd.Reply(fmt.Sprintf("- event: %s", e.ID))
+	}
+
+}

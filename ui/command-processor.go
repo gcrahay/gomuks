@@ -179,6 +179,7 @@ func NewCommandProcessor(parent *MainView) *CommandProcessor {
 			"export-room":   cmdExportRoomKeys,
 			"ssss":          cmdSSSS,
 			"cross-signing": cmdCrossSigning,
+			"search":        cmdSearch,
 		},
 	}
 }

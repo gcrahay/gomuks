@@ -73,6 +73,7 @@ type Config struct {
 	CacheDir     string `yaml:"cache_dir"`
 	HistoryPath  string `yaml:"history_path"`
 	RoomListPath string `yaml:"room_list_path"`
+	IndexPath    string `yaml:"index_path"`
 	MediaDir     string `yaml:"media_dir"`
 	DownloadDir  string `yaml:"download_dir"`
 	StateDir     string `yaml:"state_dir"`
@@ -94,6 +95,7 @@ func NewConfig(configDir, dataDir, cacheDir, downloadDir string) *Config {
 		DownloadDir:  downloadDir,
 		HistoryPath:  filepath.Join(cacheDir, "history.db"),
 		RoomListPath: filepath.Join(cacheDir, "rooms.gob.gz"),
+		IndexPath:    filepath.Join(cacheDir, "event_index.db"),
 		StateDir:     filepath.Join(cacheDir, "state"),
 		MediaDir:     filepath.Join(cacheDir, "media"),
 
@@ -109,6 +111,7 @@ func NewConfig(configDir, dataDir, cacheDir, downloadDir string) *Config {
 func (config *Config) Clear() {
 	_ = os.Remove(config.HistoryPath)
 	_ = os.Remove(config.RoomListPath)
+	_ = os.Remove(config.IndexPath)
 	_ = os.RemoveAll(config.StateDir)
 	_ = os.RemoveAll(config.MediaDir)
 	_ = os.RemoveAll(config.CacheDir)

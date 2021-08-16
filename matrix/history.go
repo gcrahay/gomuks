@@ -29,6 +29,7 @@ import (
 	"maunium.net/go/mautrix/event"
 	"maunium.net/go/mautrix/id"
 
+	"maunium.net/go/gomuks/debug"
 	"maunium.net/go/gomuks/matrix/muksevt"
 	"maunium.net/go/gomuks/matrix/rooms"
 )
@@ -39,6 +40,7 @@ type HistoryManager struct {
 	db *bolt.DB
 
 	historyEndPtr map[*rooms.Room]uint64
+	index         *EventIndex
 }
 
 var bucketRoomStreams = []byte("room_streams")
@@ -47,9 +49,14 @@ var bucketStreamPointers = []byte("room_stream_pointers")
 
 const halfUint64 = ^uint64(0) >> 1
 
-func NewHistoryManager(dbPath string) (*HistoryManager, error) {
+func NewHistoryManager(dbPath string, indexpath string) (*HistoryManager, error) {
+	ei, err := NewEventIndex(indexpath)
+	if err != nil {
+		return nil, err
+	}
 	hm := &HistoryManager{
 		historyEndPtr: make(map[*rooms.Room]uint64),
+		index:         ei,
 	}
 	db, err := bolt.Open(dbPath, 0600, &bolt.Options{
 		Timeout:      1,
@@ -89,6 +96,23 @@ var (
 	EventNotFoundError = errors.New("event not found")
 	RoomNotFoundError  = errors.New("room not found")
 )
+
+func (hm *HistoryManager) Search(room *rooms.Room, terms string) ([]*muksevt.Event, error) {
+	ids, err := hm.index.SearchRoom(room.ID, terms)
+	if err != nil {
+		return nil, err
+	}
+	evts := make([]*muksevt.Event, 0, len(ids))
+	for _, evtID := range ids {
+		e, err := hm.Get(room, evtID)
+		if err == nil {
+			evts = append(evts, e)
+		} else {
+			debug.Printf("[search] cannot extract found event <%s> in history: %s", evtID, err)
+		}
+	}
+	return evts, nil
+}
 
 func (hm *HistoryManager) getStreamIndex(tx *bolt.Tx, roomID []byte, eventID []byte) (*bolt.Bucket, []byte, error) {
 	eventIDs := tx.Bucket(bucketRoomEventIDs).Bucket(roomID)
@@ -182,11 +206,15 @@ func (hm *HistoryManager) store(room *rooms.Room, events []*event.Event, append 
 				if err := put(stream, eventIDs, newEvents[i], ptrStart+uint64(i)); err != nil {
 					return err
 				}
+				if newEvents[i].Type == event.EventMessage {
+					_ = hm.index.Put(room.ID, *newEvents[i])
+				}
 			}
 			err = stream.SetSequence(ptrStart + uint64(len(events)) - 1)
 			if err != nil {
 				return err
 			}
+
 		} else {
 			ptrStart, ok := hm.historyEndPtr[room]
 			if !ok {
@@ -212,7 +240,6 @@ func (hm *HistoryManager) store(room *rooms.Room, events []*event.Event, append 
 				return err
 			}
 		}
-
 		return nil
 	})
 	return
